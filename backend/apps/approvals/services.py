@@ -25,6 +25,7 @@ def current_rule(approval_request: ApprovalRequest) -> ApprovalMatrixRule | None
 
 @transaction.atomic
 def create_approval_request(invoice: Invoice, submitted_by=None, request=None) -> ApprovalRequest | None:
+    caller_invoice = invoice
     invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
     if invoice.validation_status != Invoice.ValidationStatus.PASSED:
         raise ApprovalError('Invoice must pass validation before approval routing.')
@@ -54,6 +55,8 @@ def create_approval_request(invoice: Invoice, submitted_by=None, request=None) -
     invoice.approval_status = Invoice.ApprovalStatus.PENDING
     invoice.processing_status = Invoice.ProcessingStatus.READY_FOR_APPROVAL
     invoice.save(update_fields=['approval_status', 'processing_status', 'updated_at'])
+    caller_invoice.approval_status = invoice.approval_status
+    caller_invoice.processing_status = invoice.processing_status
     log_audit_event(
         action='APPROVAL_REQUEST_CREATED',
         entity_type='APPROVAL_REQUEST',
