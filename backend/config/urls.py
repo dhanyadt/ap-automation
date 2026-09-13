@@ -13,6 +13,8 @@ from apps.purchase_orders.views import PurchaseOrderViewSet
 from apps.goods_receipts.views import GoodsReceiptViewSet
 from apps.invoices.views import InvoiceViewSet
 from apps.audit.views import AuditLogViewSet
+from apps.approvals.views import ApprovalRequestViewSet
+from apps.payments.views import PaymentViewSet
 
 def health_check(request):
     """Liveness & Readiness probe endpoint."""
@@ -30,6 +32,8 @@ router_v1.register(r'purchase-orders', PurchaseOrderViewSet, basename='purchase-
 router_v1.register(r'goods-receipts', GoodsReceiptViewSet, basename='goods-receipt')
 router_v1.register(r'invoices', InvoiceViewSet, basename='invoice')
 router_v1.register(r'audit-logs', AuditLogViewSet, basename='audit-log')
+router_v1.register(r'approvals', ApprovalRequestViewSet, basename='approval')
+router_v1.register(r'payments', PaymentViewSet, basename='payment')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

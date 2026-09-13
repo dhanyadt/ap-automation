@@ -4,6 +4,7 @@ from apps.audit.services import log_audit_event
 from apps.matching.services import run_matching
 from apps.ocr.services import run_ocr
 from apps.validations.services import validate_invoice
+from apps.approvals.services import create_approval_request
 from .models import Invoice
 
 
@@ -20,10 +21,14 @@ def process_invoice(invoice: Invoice, actor=None, request=None) -> dict:
     invoice.refresh_from_db()
     validation_results = validate_invoice(invoice, actor=actor, request=request)
     match_run = None
+    approval_request = None
     if invoice.validation_status == Invoice.ValidationStatus.PASSED and invoice.purchase_order:
         match_run = run_matching(invoice, actor=actor, request=request)
+        if match_run.is_successful:
+            approval_request = create_approval_request(invoice, submitted_by=actor, request=request)
     return {
         'invoice': invoice,
         'validation_results': validation_results,
         'match_run': match_run,
+        'approval_request': approval_request,
     }

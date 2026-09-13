@@ -13,6 +13,7 @@ from .services import process_invoice
 from apps.audit.services import log_audit_event
 from apps.validations.serializers import ValidationResultSerializer
 from apps.matching.serializers import MatchRunSerializer
+from apps.approvals.serializers import ApprovalRequestSerializer
 from apps.vendors.models import Vendor
 from apps.purchase_orders.models import PurchaseOrder
 from .models import Invoice, InvoiceItem
@@ -110,6 +111,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 'match_run': (
                     MatchRunSerializer(result['match_run']).data
                     if result['match_run'] else None
+                ),
+                'approval_request': (
+                    ApprovalRequestSerializer(result['approval_request']).data
+                    if result['approval_request'] else None
                 ),
             },
         }, status=status.HTTP_200_OK)
