@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ap_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ap_automation_db}
+      POSTGRES_USER: ${POSTGRES_USER:-ap_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ap_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ap_user} -d ${POSTGRES_DB:-ap_automation_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ap_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ap_backend
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-docker-secret-key-12345}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - DB_ENGINE=django.db.backends.postgresql
+      - POSTGRES_DB=${POSTGRES_DB:-ap_automation_db}
+      - POSTGRES_USER=${POSTGRES_USER:-ap_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ap_password}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ap_celery_worker
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-docker-secret-key-12345}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - DB_ENGINE=django.db.backends.postgresql
+      - POSTGRES_DB=${POSTGRES_DB:-ap_automation_db}
+      - POSTGRES_USER=${POSTGRES_USER:-ap_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ap_password}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ap_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
