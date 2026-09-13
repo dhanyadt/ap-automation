@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List
 
@@ -31,6 +31,10 @@ class MockOCRProvider(BaseOCRProvider):
         invoice_date = invoice.invoice_date or (
             purchase_order.issue_date if purchase_order else date.today()
         )
+        if isinstance(invoice_date, datetime):
+            invoice_date = invoice_date.date()
+        elif isinstance(invoice_date, str):
+            invoice_date = date.fromisoformat(invoice_date[:10])
         items = [
             {
                 'line_number': item.line_number,
