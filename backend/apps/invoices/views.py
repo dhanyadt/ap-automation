@@ -3,12 +3,16 @@ from decimal import Decimal
 from rest_framework import viewsets, permissions, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from django_filters import rest_framework as filters
 from pypdf import PdfReader
 from common.permissions import IsAPClerkRole
 from common.utils import api_response, get_indian_fiscal_year
+from .services import process_invoice
 from apps.audit.services import log_audit_event
+from apps.validations.serializers import ValidationResultSerializer
+from apps.matching.serializers import MatchRunSerializer
 from apps.vendors.models import Vendor
 from apps.purchase_orders.models import PurchaseOrder
 from .models import Invoice, InvoiceItem
@@ -58,7 +62,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'upload']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'upload', 'process']:
             return [IsAPClerkRole()]
         return [permissions.IsAuthenticated()]
 
@@ -90,6 +94,26 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAPClerkRole])
+    def process(self, request, pk=None):
+        invoice = self.get_object()
+        result = process_invoice(invoice, actor=request.user, request=request)
+        invoice.refresh_from_db()
+        return Response({
+            'success': True,
+            'message': 'Invoice processing completed.',
+            'data': {
+                'invoice': InvoiceSerializer(invoice, context={'request': request}).data,
+                'validation_results': ValidationResultSerializer(
+                    invoice.validation_results.all(), many=True
+                ).data,
+                'match_run': (
+                    MatchRunSerializer(result['match_run']).data
+                    if result['match_run'] else None
+                ),
+            },
+        }, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload(self, request):
         """
@@ -108,13 +132,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             try:
                 vendor = Vendor.objects.get(id=vendor_id)
             except Vendor.DoesNotExist:
-                pass
+                raise ValidationError({'vendor': 'Vendor does not exist.'})
 
         purchase_order = None
         if po_number:
             purchase_order = PurchaseOrder.objects.filter(po_number__iexact=po_number).first()
             if not vendor and purchase_order:
                 vendor = purchase_order.vendor
+            if vendor and purchase_order and purchase_order.vendor_id != vendor.id:
+                raise ValidationError({'po_number': 'Purchase order does not belong to the selected vendor.'})
 
         # Detect pages count for PDFs safely
         pages_count = 1

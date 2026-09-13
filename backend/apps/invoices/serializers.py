@@ -5,6 +5,9 @@ from django.conf import settings
 from common.utils import get_indian_fiscal_year
 from apps.vendors.models import Vendor
 from apps.purchase_orders.models import PurchaseOrder
+from apps.ocr.serializers import OCRJobSerializer
+from apps.validations.serializers import ValidationResultSerializer
+from apps.matching.serializers import MatchRunSerializer
 from .models import Invoice, InvoiceItem
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
@@ -28,7 +31,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             'matched_grn_item',
             'confidence_score',
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'tax_amount', 'line_total', 'matched_po_item', 'matched_grn_item', 'confidence_score']
 
     def validate(self, attrs):
         qty = attrs.get('quantity')
@@ -50,6 +53,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source='vendor.name', read_only=True)
     vendor_code = serializers.CharField(source='vendor.code', read_only=True)
     file_url = serializers.SerializerMethodField()
+    ocr_jobs = OCRJobSerializer(many=True, read_only=True)
+    validation_results = ValidationResultSerializer(many=True, read_only=True)
+    match_runs = MatchRunSerializer(many=True, read_only=True)
 
     class Meta:
         model = Invoice
@@ -85,6 +91,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'ocr_confidence',
             'notes',
             'items',
+            'ocr_jobs',
+            'validation_results',
+            'match_runs',
             'created_at',
             'updated_at',
         ]
@@ -93,6 +102,15 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'file_url',
             'created_at',
             'updated_at',
+            'processing_status',
+            'ocr_status',
+            'validation_status',
+            'matching_status',
+            'approval_status',
+            'payment_status',
+            'ocr_confidence',
+            'vendor_name_extracted',
+            'vendor_gstin_extracted',
         ]
 
     def get_file_url(self, obj):
