@@ -9,13 +9,13 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
+        target: 'http://backend:8000',
+        changeOrigin: false,
         secure: false,
       },
       '/media': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
+        target: 'http://backend:8000',
+        changeOrigin: false,
         secure: false,
       }
     }
