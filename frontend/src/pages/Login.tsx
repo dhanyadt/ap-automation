@@ -18,6 +18,7 @@ export const Login: React.FC = () => {
     { label: 'Finance', email: 'finance@apautomation.com', role: 'FINANCE' },
     { label: 'CFO', email: 'cfo@apautomation.com', role: 'CFO' },
     { label: 'Admin', email: 'admin@apautomation.com', role: 'ADMIN' },
+    { label: 'Vendor', email: 'vendor@apautomation.com', role: 'VENDOR' },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {

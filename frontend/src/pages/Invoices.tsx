@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Search, Plus, X } from 'lucide-react';
+import { FileText, Search, Plus, X, UploadCloud } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -25,6 +25,7 @@ const initialForm: InvoiceForm = {
 
 const inputClass = 'w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
 const labelClass = 'mb-1.5 block text-xs font-medium text-slate-300';
+const acceptedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
 
 const formatApiError = (error: any): string => {
   const data = error?.response?.data;
@@ -47,6 +48,7 @@ export const Invoices: React.FC = () => {
   const [form, setForm] = useState<InvoiceForm>(initialForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const canUpload = user?.role === 'AP_CLERK' || user?.role === 'ADMIN';
 
   const fetchInvoices = async () => {
@@ -122,6 +124,17 @@ export const Invoices: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const selectFile = (file: File | undefined) => {
+    if (!file) return;
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!acceptedExtensions.includes(extension)) {
+      setFormError('Unsupported file format. Use PDF, JPG, JPEG, PNG, TIFF, or TIF.');
+      return;
+    }
+    setForm((current) => ({ ...current, file }));
+    setFormError('');
   };
 
   const getStatusBadge = (status: string) => {
@@ -240,11 +253,21 @@ export const Invoices: React.FC = () => {
             </div>
             <form onSubmit={submitInvoice} className="space-y-5 p-6">
               {formError && <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300" role="alert">{formError}</div>}
-              <label className="block">
+              <div
+                onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => { event.preventDefault(); setIsDragging(false); selectFile(event.dataTransfer.files?.[0]); }}
+                className={`rounded-xl border-2 border-dashed p-5 text-center transition-colors ${isDragging ? 'border-blue-400 bg-blue-500/10' : 'border-slate-600 bg-slate-900/50'}`}
+              >
                 <span className={labelClass}>Invoice document *</span>
-                <input required type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" onChange={(event) => setForm({ ...form, file: event.target.files?.[0] || null })} className="w-full rounded-lg border border-dashed border-slate-600 bg-slate-900 px-3 py-3 text-sm text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-500" />
-                <span className="mt-1 block text-[11px] text-slate-500">Accepted formats: PDF, JPG, PNG, TIFF</span>
-              </label>
+                <UploadCloud className="mx-auto my-2 h-7 w-7 text-blue-400" />
+                <label className="inline-flex cursor-pointer items-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500">
+                  Choose file
+                  <input required={!form.file} type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" onChange={(event) => selectFile(event.target.files?.[0])} className="sr-only" />
+                </label>
+                <span className="mt-2 block text-[11px] text-slate-500">or drag and drop · PDF, JPG, JPEG, PNG, TIFF, TIF</span>
+                {form.file && <p className="mt-3 text-xs text-slate-300">{form.file.name} <span className="text-slate-500">({(form.file.size / 1024 / 1024).toFixed(2)} MB)</span></p>}
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label><span className={labelClass}>Vendor</span><select value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value, purchase_order: '' })} className={inputClass}><option value="">Select active vendor</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} - {vendor.name}</option>)}</select></label>
                 <label><span className={labelClass}>Purchase order</span><select value={form.purchase_order} onChange={(e) => setForm({ ...form, purchase_order: e.target.value })} className={inputClass}><option value="">No PO reference</option>{purchaseOrders.filter((po) => !form.vendor || po.vendor === form.vendor).map((po) => <option key={po.id} value={po.id}>{po.po_number} - {po.vendor_name}</option>)}</select></label>

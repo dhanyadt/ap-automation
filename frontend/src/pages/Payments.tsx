@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, CreditCard, FileText, Loader2, RefreshCw, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, CreditCard, FileText, Loader2, Printer, RefreshCw, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 
@@ -106,6 +106,16 @@ export const Payments: React.FC = () => {
     } catch (requestError) {
       setActionError(formatError(requestError));
     }
+  };
+
+  const printAdvice = () => {
+    if (!advice) return;
+    const printWindow = window.open('', '_blank', 'width=800,height=700');
+    if (!printWindow) return;
+    printWindow.document.write(`<html><head><title>Payment Advice - ${advice.invoice_number}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{font-size:24px}table{width:100%;border-collapse:collapse;margin-top:24px}td{padding:12px;border-bottom:1px solid #ddd}td:first-child{font-weight:bold;width:35%;color:#526070}</style></head><body><h1>Payment Advice</h1><p>Invoice ${advice.invoice_number}</p><table><tbody><tr><td>Vendor</td><td>${advice.vendor_name}</td></tr><tr><td>Amount</td><td>${advice.currency} ${advice.amount}</td></tr><tr><td>Status</td><td>${advice.status}</td></tr><tr><td>Payment method</td><td>${advice.payment_method}</td></tr><tr><td>UTR / Reference</td><td>${advice.utr || 'Not settled'}</td></tr><tr><td>Paid date</td><td>${advice.paid_at ? formatDate(advice.paid_at) : 'Not settled'}</td></tr></tbody></table></body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   const totalRequested = payments
@@ -240,6 +250,7 @@ export const Payments: React.FC = () => {
                 <p className="text-xs uppercase tracking-wide text-cyan-400">Payment advice</p>
                 <h2 className="mt-1 text-xl font-bold text-white">{advice.invoice_number}</h2>
               </div>
+              <button type="button" onClick={printAdvice} className="mr-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-600 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-700"><Printer className="h-3.5 w-3.5" /> Print</button>
               <button type="button" onClick={() => setAdvice(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-700 hover:text-white" aria-label="Close advice">
                 <X className="h-5 w-5" />
               </button>

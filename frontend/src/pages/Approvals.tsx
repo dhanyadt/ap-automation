@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, ChevronDown, Clock, RefreshCw, X, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Clock, RefreshCw, X, XCircle, ArrowUpRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 
@@ -55,7 +55,7 @@ export const Approvals: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [commentRequest, setCommentRequest] = useState<ApprovalRequest | null>(null);
   const [comment, setComment] = useState('');
-  const [action, setAction] = useState<'approve' | 'reject' | null>(null);
+  const [action, setAction] = useState<'approve' | 'reject' | 'escalate' | null>(null);
   const [actionError, setActionError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -102,7 +102,7 @@ export const Approvals: React.FC = () => {
     fetchRequests();
   }, [user?.id, user?.role]);
 
-  const openAction = (request: ApprovalRequest, nextAction: 'approve' | 'reject') => {
+  const openAction = (request: ApprovalRequest, nextAction: 'approve' | 'reject' | 'escalate') => {
     setCommentRequest(request);
     setAction(nextAction);
     setComment('');
@@ -112,8 +112,8 @@ export const Approvals: React.FC = () => {
   const submitAction = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!commentRequest || !action || saving) return;
-    if (action === 'reject' && !comment.trim()) {
-      setActionError('Please provide a rejection reason.');
+    if (action !== 'approve' && !comment.trim()) {
+      setActionError(action === 'reject' ? 'Please provide a rejection reason.' : 'Please provide an escalation comment.');
       return;
     }
     setSaving(true);
@@ -184,6 +184,7 @@ export const Approvals: React.FC = () => {
                         <>
                           <button type="button" onClick={() => openAction(request, 'approve')} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"><CheckCircle2 className="h-4 w-4" /> Approve</button>
                           <button type="button" onClick={() => openAction(request, 'reject')} className="inline-flex items-center gap-1 rounded-lg border border-rose-500/40 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/10"><XCircle className="h-4 w-4" /> Reject</button>
+                          <button type="button" onClick={() => openAction(request, 'escalate')} className="inline-flex items-center gap-1 rounded-lg border border-amber-500/40 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/10"><ArrowUpRight className="h-4 w-4" /> Escalate</button>
                         </>
                       ) : (
                         <span className="text-xs text-slate-500">Awaiting {request.required_role || 'configured approver'}</span>
@@ -214,7 +215,7 @@ export const Approvals: React.FC = () => {
           <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-800 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-white">{action === 'approve' ? 'Approve invoice' : 'Reject invoice'}</h2>
+                <h2 className="text-lg font-bold text-white">{action === 'approve' ? 'Approve invoice' : action === 'reject' ? 'Reject invoice' : 'Escalate invoice'}</h2>
                 <p className="mt-1 text-xs text-slate-400">{commentRequest.invoice_number || 'Invoice review'}</p>
               </div>
               <button type="button" onClick={() => !saving && setCommentRequest(null)} disabled={saving} className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-50" aria-label="Close">
@@ -224,12 +225,12 @@ export const Approvals: React.FC = () => {
             <form onSubmit={submitAction} className="space-y-4 p-6">
               {actionError && <div className="flex gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300"><AlertCircle className="h-4 w-4 shrink-0" />{actionError}</div>}
               <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-300">{action === 'reject' ? 'Rejection reason *' : 'Comment'}</span>
-                <textarea required={action === 'reject'} rows={4} value={comment} onChange={(event) => setComment(event.target.value)} className={inputClass} placeholder={action === 'reject' ? 'Explain why this invoice is being rejected.' : 'Add an optional review comment.'} />
+                <span className="mb-1.5 block text-xs font-medium text-slate-300">{action === 'reject' ? 'Rejection reason *' : action === 'escalate' ? 'Escalation comment *' : 'Comment'}</span>
+                <textarea required={action !== 'approve'} rows={4} value={comment} onChange={(event) => setComment(event.target.value)} className={inputClass} placeholder={action === 'reject' ? 'Explain why this invoice is being rejected.' : action === 'escalate' ? 'Explain why this invoice needs escalation.' : 'Add an optional review comment.'} />
               </label>
               <div className="flex justify-end gap-3 border-t border-slate-700 pt-4">
                 <button type="button" onClick={() => setCommentRequest(null)} disabled={saving} className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 disabled:opacity-50">Cancel</button>
-                <button type="submit" disabled={saving} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'}`}>{saving ? 'Saving...' : action === 'approve' ? 'Confirm approval' : 'Confirm rejection'}</button>
+                <button type="submit" disabled={saving} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-500' : action === 'escalate' ? 'bg-amber-600 hover:bg-amber-500' : 'bg-rose-600 hover:bg-rose-500'}`}>{saving ? 'Saving...' : action === 'approve' ? 'Confirm approval' : action === 'escalate' ? 'Confirm escalation' : 'Confirm rejection'}</button>
               </div>
             </form>
           </div>
