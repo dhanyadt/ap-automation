@@ -50,7 +50,6 @@ services:
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-docker-secret-key-12345}
       - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
-      - DB_ENGINE=django.db.backends.postgresql
       - POSTGRES_DB=${POSTGRES_DB:-ap_automation_db}
       - POSTGRES_USER=${POSTGRES_USER:-ap_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ap_password}
@@ -79,7 +78,6 @@ services:
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-docker-secret-key-12345}
       - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
-      - DB_ENGINE=django.db.backends.postgresql
       - POSTGRES_DB=${POSTGRES_DB:-ap_automation_db}
       - POSTGRES_USER=${POSTGRES_USER:-ap_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ap_password}
